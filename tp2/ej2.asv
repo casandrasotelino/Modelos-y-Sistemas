@@ -1,0 +1,11 @@
+%2. En ciertas circunstancias, el n´umero de individuos en determinadas poblaciones de
+%bacterias se rige por la ley
+%y′ = 0.2y.
+%Si al comienzo del experimento hay 30.000 bacterias,
+%(a) Cu´antas habr´a 10 horas m´as tarde?
+%(b) En qu´e instante habr´a 100.000 bacterias?
+y0 = 30000;
+tspan = [0 12]; % ampliamos para cubrir todo el crecimiento
+f = @(t, y) 0.2 * y; %@ define que es una funcion; @(var ind, var dep)
+[t , y] = ode45(f, tspan, y0);
+plot(t, y)
