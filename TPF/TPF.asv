@@ -1,20 +1,86 @@
 syms T I V 
-
-s = 10; %s puede ser una entrada, hay que analizar el comportamiento del sistema si esta variable varía
+s_v = [0 0.01 0.1 1 10 100 1000]; %s puede ser una entrada, hay que analizar el comportamiento del sistema si esta variable varía
 beta = 2.4 * 10^(-5);
 delta = 0.7; 
 p = 100;
 d = 0.01;
 c = 2.4;
+X0 = [1000 0.1 1];
+colores = lines(length(s_v));
 tspan = [0 100];
 N = 5000;
-eqs = [s - d*T - beta * T * V == 0, beta * T * V - delta * I == 0, p * I - c * V];
-S = solve(eqs,[T I V],'Real',true);
-F = @(t,T,I,V)[s - d*T - beta * T *V ; beta * T * V - delta * I ; p * I - c * V];
-Xcrit = double([S.T, S.I, S.V]);
-%%Evaluo el jacobiano en Xcrit
-J_ = subs(J, [T, I, V], Xcrit(1, :));
-%J_ = subs(J, [T, I, V], Xcrit)
-[AVE , AVA] = eig(J_);
-X0= [1000 0.1 1];
 
+% 1. Preparamos la figura ANTES de entrar al bucle
+figure;
+hold on;
+grid on;
+xlabel('T (Sanas)');
+ylabel('I (Infectadas)');
+zlabel('V (Virus)');
+title('Diagrama de Fase 3D para distintos valores de s');
+
+for i = 1:length(s_v)
+    s = s_v(i)
+    
+    % calculamos el punto de equilibrio
+    eqs = [s - d*T - beta * T * V == 0, beta * T * V - delta * I == 0, p * I - c * V == 0];
+    S = solve(eqs, [T I V], 'Real', true);
+    
+    % Definimos un vector con los datos obtenidos
+    F_sym = [s - d*T - beta * T * V; 
+             beta * T * V - delta * I; 
+             p * I - c * V];
+         
+    % Función de la EDO
+    F = @(t,T,I,V)[s - d*T - beta * T * V ; beta * T * V - delta * I ; p * I - c * V];
+    
+    % Jacobiano alrededor de los puntos de equilibrio
+    J = jacobian(F_sym, [T, I, V]);
+    Xcrit = double([S.T, S.I, S.V]);
+    
+    if isempty(Xcrit)
+        disp('No se encontraron puntos de equilibrio reales.');
+        continue;
+    end
+    
+    disp('Puntos de equilibrio [T, I, V]:');
+    disp(Xcrit);
+    
+    % Evaluo el jacobiano en Xcrit
+    J_ = double(subs(J, [T, I, V], Xcrit(1, :)));
+    [AVE, AVA] = eig(J_);
+    
+    disp('Autovectores y Autovalores:');
+    disp([AVE, AVA]);
+    
+    % Punto 1 y Punto 2
+    disp('Punto 1 y Punto 2 [T, I, V]:');
+    Xcrit = double([S.T, S.I, S.V]);
+    disp(Xcrit);
+    
+    autovalores = diag(AVA);
+    if all(real(autovalores) < 0)
+        disp('Resultado: El punto de equilibrio es ESTABLE.');
+    else
+        disp('Resultado: El punto de equilibrio es INESTABLE.');
+    end
+    
+    F_vec = @(t, x) [s - d*x(1) - beta*x(1)*x(3); 
+                     beta*x(1)*x(3) - delta*x(2); 
+                     p*x(2) - c*x(3)];
+                 
+    [t, X] = ode45(F_vec, tspan, X0);
+    
+    % Graficamos acumulando las líneas y puntos en la misma figura
+    plot3(X(:, 1), X(:, 2), X(:, 3), 'LineWidth', 1.5, 'Color', colores(i, :));
+    scatter3(Xcrit(:, 1), Xcrit(:, 2), Xcrit(:, 3), 50, colores(i, :), 'filled', 'MarkerEdgeColor', 'k');
+end
+
+% 2. La leyenda, la vista 3D y el hold off van FUERA del bucle
+leyendas = cell(1, length(s_v));
+for k = 1:length(s_v)
+    leyendas{k} = ['s = ', num2str(s_v(k))];
+end
+legend(leyendas, 'Location', 'best');
+view(3);
+hold off;
